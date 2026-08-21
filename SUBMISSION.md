@@ -39,8 +39,8 @@ Crosscheck is a reusable framing-sensitivity detector for LLM-backed contracts. 
 ## Links
 
 ```
-GitHub:   https://github.com/YOUR_HANDLE/genlayer-crosscheck
-Contract: https://github.com/YOUR_HANDLE/genlayer-crosscheck/blob/main/contracts/crosscheck.py
+GitHub:   https://github.com/meitipro/genlayer-crosscheck
+Contract: https://github.com/meitipro/genlayer-crosscheck/blob/main/contracts/crosscheck.py
 Explorer: https://explorer-studio.genlayer.com/address/{address}
 ```
 

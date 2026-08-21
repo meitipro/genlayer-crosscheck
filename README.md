@@ -213,7 +213,11 @@ page shows real method calls with consensus results rather than only a deploy.
 ## Related work
 
 A separate primitive, built to the same standard and submitted independently:
-[Tolerance](https://github.com/YOUR_HANDLE/genlayer-tolerance) — per-field numeric agreement and plausibility guards.
+[Tolerance](https://github.com/meitipro/genlayer-tolerance) — per-field numeric agreement and plausibility guards.
 
 The two share an author and a discipline, not a codebase. Each deploys, tests
 and is used entirely on its own.
+
+---
+
+Published by [InferNode](https://x.com/Infer_node).
