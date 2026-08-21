@@ -63,7 +63,7 @@ def merge(*ds):
 class TestCrosscheck:
     @pytest.fixture
     def contract(self):
-        factory = get_contract_factory("Contract", contract_file="contracts/crosscheck.py")
+        factory = get_contract_factory(contract_file_path="crosscheck.py")
         return factory.deploy(args=[])
 
     def _register(self, contract, claim="The withdrawal fee is under one percent."):
