@@ -254,7 +254,7 @@ class Contract(gl.Contract):
                 author=gl.message.sender_address,
                 text=t,
                 evidence_url=u,
-                checks=DynArray[Check](),
+                checks=gl.storage.inmem_allocate(DynArray[Check]),
                 n_supported=u256(0),
                 n_refuted=u256(0),
                 n_unstable=u256(0),
