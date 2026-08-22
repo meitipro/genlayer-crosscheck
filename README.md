@@ -5,7 +5,7 @@
 A reusable primitive that answers a yes/no question about evidence by asking it **twice in opposite framings** inside a single non-deterministic block, and refusing to answer when the two framings disagree with each other.
 
 - **Contract:** [`contracts/crosscheck.py`](contracts/crosscheck.py)
-- **Tests:** `pytest tests/ -q` → **51 passed**, nothing to install but pytest
+- **Tests:** `pytest tests/ -q` → **62 passed**, nothing to install but pytest
 - **Deployed:** `{address}` on studionet ([explorer](https://explorer-studio.genlayer.com/address/{address}))
 - **Specification:** [CONTRACTS.md](CONTRACTS.md)
 - **Decisions and limits:** [DECISIONS.md](DECISIONS.md)
@@ -129,7 +129,7 @@ pytest tests/ -q
 ```
 
 ```
-51 passed, 1 skipped
+62 passed, 1 skipped
 ```
 
 Three suites, covering different things.
@@ -160,8 +160,8 @@ gltest --network studionet tests/test_integration.py
 ### The tests have teeth
 
 Passing tests prove nothing on their own, so every safety property was broken on
-purpose to confirm a test notices. Seven mutations were introduced against
-this contract and all seven were caught:
+purpose to confirm a test notices. Thirteen mutations were introduced against this
+contract and all thirteen were caught:
 
 | Mutation | Caught by |
 |---|---|
@@ -172,6 +172,12 @@ this contract and all seven were caught:
 | control characters left in stored reasons | `test_control_characters_become_spaces` |
 | the view bounds check removed | `test_a_read_with_a_nonexistent_id_is_a_user_error` |
 | negative ids allowed through to Python list indexing | `test_a_read_with_a_negative_id_does_not_return_the_last_record` |
+| a lookup that ignores the claim id | `test_two_claims_do_not_read_each_other_s_checks` |
+| a collection nested back inside a storage dataclass | `test_no_storage_dataclass_holds_a_collection` |
+| a bare, uninstantiated generic in storage | `test_the_contract_imports_under_genvm_storage_rules` |
+| an `int` storage field | `test_no_forbidden_storage_types` |
+| a ghost field that never persists | `test_every_persistent_field_is_declared_in_the_class_body` |
+| a live storage object passed into the block | `test_no_block_closes_over_a_storage_object` |
 
 ---
 

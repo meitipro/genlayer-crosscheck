@@ -56,6 +56,18 @@ THE THIRD ANSWER
     Every claim keeps a stability record. A claim that comes back UNSTABLE
     repeatedly is telling you the claim is badly worded, not that the network
     is broken.
+
+A NOTE ON THE STORAGE LAYOUT
+    Every storage collection here is a TOP LEVEL contract field. No dataclass
+    contains a DynArray, and a Check carries a claim_id rather than living
+    inside its claim.
+
+    That is not a style choice. GenVM storage types have a fixed memory layout
+    and no type erasure, so a nested collection cannot be built in memory:
+    DynArray[Check]() is refused outright, and gl.storage.inmem_allocate is for
+    generic dataclasses rather than for the collections themselves. Top level
+    fields are allocated by the runtime, which is why this shape works and the
+    nested one does not. See DECISIONS.md.
 """
 
 from genlayer import *
@@ -201,9 +213,24 @@ Return json: {{"answer": "{YES}|{NO}|{UNCLEAR}", "because": "<= 20 words"}}"""
 # Storage
 # ---------------------------------------------------------------------------
 
+# A note on the shape, because it looks flatter than it needs to be.
+#
+# The obvious model is Claim.checks: DynArray[Check]. GenVM will not build it.
+# A storage generic has a fixed layout and no type erasure, so it cannot be
+# constructed in memory at all: DynArray[Check]() raises "this class can't be
+# instantiated by user", and gl.storage.inmem_allocate does not rescue it
+# either. Storage collections are created by the RUNTIME, for fields declared
+# directly on the contract.
+#
+# So both collections live at the top level and the child rows carry the id of
+# their parent. Reads walk backwards and stop at the first match, which is the
+# newest, and that is the only lookup either view needs.
+
+
 @allow_storage
 @dataclass
 class Check:
+    claim_id: u256
     verdict: str
     positive: str
     negative: str
@@ -218,7 +245,6 @@ class Claim:
     author: Address
     text: str
     evidence_url: str
-    checks: DynArray[Check]
     n_supported: u256
     n_refuted: u256
     n_unstable: u256
@@ -226,6 +252,8 @@ class Claim:
 
 class Contract(gl.Contract):
     claims: DynArray[Claim]
+    checks: DynArray[Check]
+    checks: DynArray[Check]
 
     def __init__(self):
         pass
@@ -254,7 +282,6 @@ class Contract(gl.Contract):
                 author=gl.message.sender_address,
                 text=t,
                 evidence_url=u,
-                checks=gl.storage.inmem_allocate(DynArray[Check]),
                 n_supported=u256(0),
                 n_refuted=u256(0),
                 n_unstable=u256(0),
@@ -345,8 +372,9 @@ class Contract(gl.Contract):
                 raise gl.vm.UserError("verdict does not follow from the reported answers")
             verdict = recomputed
 
-        c.checks.append(
+        self.checks.append(
             Check(
+                claim_id=u256(cid),
                 verdict=verdict,
                 positive=positive,
                 negative=negative,
@@ -364,6 +392,19 @@ class Contract(gl.Contract):
 
     # -- reads ------------------------------------------------------------
 
+    def _last_check(self, claim_id: u256):
+        """The most recent check for a claim, or None.
+
+        Checks live in one flat array with a claim_id on each, so this walks
+        backwards to the first match. It is O(n) and it only ever runs inside a
+        view, so it costs the caller nothing and never runs inside a write.
+        """
+        target = int(claim_id)
+        for i in range(len(self.checks) - 1, -1, -1):
+            if int(self.checks[i].claim_id) == target:
+                return self.checks[i]
+        return None
+
     def _claim(self, claim_id: u256):
         """Bounds-checked lookup, used by every read.
 
@@ -378,7 +419,6 @@ class Contract(gl.Contract):
             raise gl.vm.UserError("no such claim")
         return self.claims[i]
 
-
     @gl.public.view
     def count(self) -> u256:
         return u256(len(self.claims))
@@ -386,17 +426,16 @@ class Contract(gl.Contract):
     @gl.public.view
     def verdict(self, claim_id: u256) -> str:
         """One-line read for another contract. UNSTABLE until proven otherwise."""
-        c = self._claim(claim_id)
-        if len(c.checks) == 0:
-            return UNSTABLE
-        return str(c.checks[len(c.checks) - 1].verdict)
+        self._claim(claim_id)
+        k = self._last_check(claim_id)
+        return UNSTABLE if k is None else str(k.verdict)
 
     @gl.public.view
     def latest(self, claim_id: u256) -> dict:
         c = self._claim(claim_id)
-        if len(c.checks) == 0:
+        k = self._last_check(claim_id)
+        if k is None:
             return {"checked": False, "claim": str(c.text)}
-        k = c.checks[len(c.checks) - 1]
         return {
             "checked": True,
             "claim": str(c.text),

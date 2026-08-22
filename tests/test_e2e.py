@@ -20,6 +20,8 @@ import pytest
 
 import glsim as S
 
+CONTRACT_PATH = "contracts/crosscheck.py"
+
 
 PAGE = (
     "Status page. The mainnet contracts are verified on the explorer. "
@@ -246,6 +248,48 @@ class TestCrosscheck:
             with pytest.raises(S.UserError, match="no such claim"):
                 getattr(c, method)(-1)
 
+
+    # -- isolation between claims ------------------------------------------
+
+    def test_two_claims_do_not_read_each_other_s_checks(self):
+        """Checks live in one flat array with a claim_id on each. Nothing else
+        keeps them apart, so this is the test that the id is honoured.
+
+        Without it, a lookup that ignored claim_id would still pass every other
+        test in this file, because every other test uses a single claim.
+        """
+        c = S.deploy("contracts/crosscheck.py")
+        S.call(c, "register", "The withdrawal fee is under one percent.",
+               "https://a.example/terms")
+        S.call(c, "register", "The audit was published this year.",
+               "https://a.example/terms")
+
+        self.mocks(SUPPORT)
+        S.call(c, "check", 0)
+        self.mocks(REFUTE)
+        S.call(c, "check", 1)
+
+        assert c.verdict(0) == "supported"
+        assert c.verdict(1) == "refuted"
+        assert c.latest(0)["claim"] == "The withdrawal fee is under one percent."
+        assert c.latest(1)["claim"] == "The audit was published this year."
+        assert c.stability(0) == {"checks": 1, "supported": 1, "refuted": 0,
+                                  "unstable": 0, "unstable_pct": 0}
+        assert c.stability(1) == {"checks": 1, "supported": 0, "refuted": 1,
+                                  "unstable": 0, "unstable_pct": 0}
+
+    def test_a_claim_with_no_checks_is_unaffected_by_another_claim_s(self):
+        c = S.deploy("contracts/crosscheck.py")
+        S.call(c, "register", "The withdrawal fee is under one percent.",
+               "https://a.example/terms")
+        S.call(c, "register", "The audit was published this year.",
+               "https://a.example/terms")
+        self.mocks(SUPPORT)
+        S.call(c, "check", 0)
+        assert c.verdict(1) == "unstable"          # never checked
+        assert c.latest(1)["checked"] is False
+        assert c.stability(1)["checks"] == 0
+
     # -- validation --------------------------------------------------------
 
     @pytest.mark.parametrize(
@@ -286,3 +330,173 @@ class TestAtomicity:
         with pytest.raises(S.UserError):
             S.call(c, "check", 0)
         assert c.stability(0)["checks"] == 0
+
+# ===========================================================================
+# GenVM storage rules
+#
+# These are not tests of the logic. They are tests of the SHAPE, and they exist
+# because two deployments failed on it: a storage dataclass cannot contain a
+# DynArray, `list` and `int` are not valid storage types, and
+# gl.storage.inmem_allocate is for generic dataclasses rather than collections.
+#
+# The simulator now refuses all three the way GenVM does, so importing the
+# contract is itself the check. These make the intent explicit.
+# ===========================================================================
+
+class TestStorageShape:
+    def test_the_contract_imports_under_genvm_storage_rules(self):
+        """If the module loads, no dataclass holds a collection and no field
+        uses a forbidden type. The simulator raises at class definition time."""
+        import glsim as _S
+        mod = _S.load_contract(CONTRACT_PATH)
+        assert hasattr(mod, "Contract")
+
+    def test_no_storage_dataclass_holds_a_collection(self):
+        import ast, pathlib
+        tree = ast.parse(pathlib.Path(CONTRACT_PATH).read_text())
+        for cls in [x for x in tree.body if isinstance(x, ast.ClassDef)]:
+            decs = " ".join(ast.unparse(d) for d in cls.decorator_list)
+            if "allow_storage" not in decs:
+                continue
+            for st in cls.body:
+                if isinstance(st, ast.AnnAssign):
+                    ann = ast.unparse(st.annotation)
+                    assert "DynArray" not in ann and "TreeMap" not in ann, (
+                        f"{cls.name}.{ast.unparse(st.target)} nests {ann}"
+                    )
+
+    def test_no_forbidden_storage_types(self):
+        import ast, pathlib
+        tree = ast.parse(pathlib.Path(CONTRACT_PATH).read_text())
+        for cls in [x for x in tree.body if isinstance(x, ast.ClassDef)]:
+            decs = " ".join(ast.unparse(d) for d in cls.decorator_list)
+            is_contract = any("gl.Contract" in ast.unparse(b) for b in cls.bases)
+            if "allow_storage" not in decs and not is_contract:
+                continue
+            for st in cls.body:
+                if isinstance(st, ast.AnnAssign):
+                    ann = ast.unparse(st.annotation)
+                    assert ann not in ("int", "float", "list", "dict", "tuple"), (
+                        f"{cls.name}.{ast.unparse(st.target)}: {ann} is forbidden"
+                    )
+                    assert not ann.startswith(("list[", "dict[", "tuple[")), (
+                        f"{cls.name}.{ast.unparse(st.target)}: {ann} is forbidden"
+                    )
+
+    def test_no_public_method_takes_a_builtin_container(self):
+        """A calldata parameter typed list[str] sits close enough to the
+        forbidden-list boundary to be a bet rather than a decision."""
+        import ast, pathlib
+        tree = ast.parse(pathlib.Path(CONTRACT_PATH).read_text())
+        safe = {"str", "u256", "u8", "bool", "Address", "bytes"}
+        for cls in [x for x in tree.body if isinstance(x, ast.ClassDef)]:
+            for m in [x for x in cls.body if isinstance(x, ast.FunctionDef)]:
+                if not any("gl.public" in ast.unparse(d) for d in m.decorator_list):
+                    continue
+                for a in m.args.args[1:]:
+                    ann = ast.unparse(a.annotation) if a.annotation else "?"
+                    assert ann in safe, f"{m.name}({a.arg}: {ann})"
+
+    def test_every_persistent_field_is_declared_in_the_class_body(self):
+        """A field created with self.x = value and never declared is NOT
+        persistent. It is silently discarded when execution ends, so the
+        contract appears to work and loses the data.
+
+        Nothing warns about this. A static check is the only defence.
+        """
+        import ast, pathlib
+        tree = ast.parse(pathlib.Path(CONTRACT_PATH).read_text())
+        cls = [x for x in tree.body if isinstance(x, ast.ClassDef)
+               and any("gl.Contract" in ast.unparse(b) for b in x.bases)][0]
+        declared = {st.target.id for st in cls.body
+                    if isinstance(st, ast.AnnAssign)}
+        for m in [x for x in cls.body if isinstance(x, ast.FunctionDef)]:
+            for node in ast.walk(m):
+                targets = []
+                if isinstance(node, ast.Assign):
+                    targets = node.targets
+                elif isinstance(node, ast.AugAssign):
+                    targets = [node.target]
+                for tg in targets:
+                    if (isinstance(tg, ast.Attribute)
+                            and isinstance(tg.value, ast.Name)
+                            and tg.value.id == "self"):
+                        assert tg.attr in declared, (
+                            f"{m.name} assigns self.{tg.attr}, which is not "
+                            f"declared in the class body and will not persist"
+                        )
+
+    def test_no_block_closes_over_a_storage_object(self):
+        """Non-deterministic blocks cannot read storage at all.
+
+        Everything a block needs must be extracted to a plain value first, or
+        copied with gl.storage.copy_to_memory(). This asserts that every name a
+        block closes over from the ENCLOSING scope was bound from a plain
+        expression rather than straight off self.
+        """
+        import ast, pathlib
+        tree = ast.parse(pathlib.Path(CONTRACT_PATH).read_text())
+        for m in [x for x in ast.walk(tree) if isinstance(x, ast.FunctionDef)]:
+            blocks = [b for b in ast.walk(m)
+                      if isinstance(b, ast.FunctionDef)
+                      and b.name in ("leader_fn", "validator_fn")]
+            if not blocks:
+                continue
+
+            # names the enclosing method binds before the first block
+            outer = {}
+            for node in m.body:
+                if isinstance(node, ast.FunctionDef):
+                    break
+                if isinstance(node, ast.Assign) and isinstance(node.targets[0], ast.Name):
+                    outer[node.targets[0].id] = ast.unparse(node.value)
+
+            for b in blocks:
+                # names the block binds itself are local, not closed over
+                local = {t.id for n in ast.walk(b)
+                         if isinstance(n, ast.Assign)
+                         for t in n.targets if isinstance(t, ast.Name)}
+                local |= {a.arg for a in b.args.args}
+                for x in ast.walk(b):
+                    if not isinstance(x, ast.Name) or x.id not in outer:
+                        continue
+                    if x.id in local:
+                        continue
+                    expr = outer[x.id]
+                    plain = (expr.startswith(("str(", "int(", "float(", "bool(", "["))
+                             or "copy_to_memory" in expr)
+                    assert plain, (
+                        f"{m.name}: the block closes over `{x.id} = {expr}`, "
+                        f"which may be a live storage object"
+                    )
+
+    def test_no_method_is_defined_twice(self):
+        """A duplicated method silently shadows the first one.
+
+        This is not hypothetical: an editing mistake left two definitions of a
+        lookup helper in this contract, and the second, unmutated copy made a
+        mutation test pass that should have failed. Python allows it and says
+        nothing at all.
+        """
+        import ast, collections, pathlib
+        tree = ast.parse(pathlib.Path(CONTRACT_PATH).read_text())
+        for cls in [x for x in tree.body if isinstance(x, ast.ClassDef)]:
+            names = [m.name for m in cls.body if isinstance(m, ast.FunctionDef)]
+            dupes = [n for n, c in collections.Counter(names).items() if c > 1]
+            assert not dupes, f"{cls.name} defines {dupes} more than once"
+
+    def test_no_top_level_name_is_defined_twice(self):
+        import ast, collections, pathlib
+        tree = ast.parse(pathlib.Path(CONTRACT_PATH).read_text())
+        names = [x.name for x in tree.body
+                 if isinstance(x, (ast.FunctionDef, ast.ClassDef))]
+        dupes = [n for n, c in collections.Counter(names).items() if c > 1]
+        assert not dupes, f"module defines {dupes} more than once"
+
+    def test_inmem_allocate_is_not_used_on_a_collection(self):
+        import pathlib, re
+        src = pathlib.Path(CONTRACT_PATH).read_text()
+        for line in src.splitlines():
+            if line.strip().startswith("#"):
+                continue
+            assert not re.search(r"inmem_allocate\(\s*(DynArray|TreeMap)", line), line
