@@ -1,3 +1,5 @@
+<p align="left"><img src="brand/lockup.svg" alt="crosscheck" height="64"></p>
+
 # Crosscheck — a framing-sensitivity detector for LLM-backed contracts
 
 A reusable primitive that answers a yes/no question about evidence by asking it **twice in opposite framings** inside a single non-deterministic block, and refusing to answer when the two framings disagree with each other.
@@ -206,6 +208,7 @@ page shows real method calls with consensus results rather than only a deploy.
   state model, API, reuse
 - [DECISIONS.md](DECISIONS.md) — engineering decisions, what testing found, and
   the honest limits
+- [brand/](brand/) — the mark, the lockup, the palette, and the social card
 - [lib/crosscheck_consensus.py](lib/crosscheck_consensus.py) — the agreement rules on
   their own, to be copied
 

@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 640" width="1280" height="640">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#12141A"/>
+      <stop offset="1" stop-color="#0A0B0E"/>
+    </linearGradient>
+  </defs>
+  <rect width="1280" height="640" fill="url(#bg)"/>
+  <rect x="0" y="0" width="1280" height="6" fill="#8B7CF6"/>
+
+  <g transform="translate(96,96) scale(1.4)">
+  <rect width="100" height="100" rx="18" fill="#0C0D10"/>
+  <line x1="50" y1="22" x2="50" y2="78" stroke="#E8E6E1" stroke-width="4" stroke-linecap="round" opacity="0.7"/>
+  <g fill="none" stroke="#8B7CF6" stroke-width="7.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M22 32 L38 50 L22 68"/>
+    <path d="M78 32 L62 50 L78 68"/>
+  </g>
+</g>
+
+  <text x="96" y="352" font-family="Inter, Helvetica Neue, Arial, sans-serif"
+        font-size="76" font-weight="700" letter-spacing="-2.6" fill="#E8E6E1">crosscheck</text>
+  <text x="96" y="410" font-family="Inter, Helvetica Neue, Arial, sans-serif"
+        font-size="27" font-weight="400" fill="#9AA0A8">Ask the question in both framings.</text>
+  <text x="96" y="452" font-family="Inter, Helvetica Neue, Arial, sans-serif"
+        font-size="27" font-weight="400" fill="#9AA0A8">Refuse when the answers disagree with each other.</text>
+
+  <line x1="96" y1="520" x2="1184" y2="520" stroke="#232830" stroke-width="1"/>
+  <text x="96" y="562" font-family="ui-monospace, SFMono-Regular, Menlo, monospace"
+        font-size="21" fill="#8B7CF6" letter-spacing="0.5">A GenLayer Intelligent Contract primitive</text>
+  <text x="1184" y="562" text-anchor="end"
+        font-family="ui-monospace, SFMono-Regular, Menlo, monospace"
+        font-size="21" fill="#5B626B" letter-spacing="0.5">InferNode</text>
+</svg>
