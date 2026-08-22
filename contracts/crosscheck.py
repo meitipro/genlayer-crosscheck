@@ -364,6 +364,21 @@ class Contract(gl.Contract):
 
     # -- reads ------------------------------------------------------------
 
+    def _claim(self, claim_id: u256):
+        """Bounds-checked lookup, used by every read.
+
+        Two things go wrong without it. An id past the end raises a raw
+        IndexError, which the runtime reports as a contract error rather than
+        a readable user error. And a NEGATIVE id silently returns the last
+        record, so asking for claim -1 hands back the newest claim as if it
+        were the one requested. The second is worse, because nothing fails.
+        """
+        i = int(claim_id)
+        if i < 0 or i >= len(self.claims):
+            raise gl.vm.UserError("no such claim")
+        return self.claims[i]
+
+
     @gl.public.view
     def count(self) -> u256:
         return u256(len(self.claims))
@@ -371,14 +386,14 @@ class Contract(gl.Contract):
     @gl.public.view
     def verdict(self, claim_id: u256) -> str:
         """One-line read for another contract. UNSTABLE until proven otherwise."""
-        c = self.claims[int(claim_id)]
+        c = self._claim(claim_id)
         if len(c.checks) == 0:
             return UNSTABLE
         return str(c.checks[len(c.checks) - 1].verdict)
 
     @gl.public.view
     def latest(self, claim_id: u256) -> dict:
-        c = self.claims[int(claim_id)]
+        c = self._claim(claim_id)
         if len(c.checks) == 0:
             return {"checked": False, "claim": str(c.text)}
         k = c.checks[len(c.checks) - 1]
@@ -407,7 +422,7 @@ class Contract(gl.Contract):
         network. It usually means the claim is worded so that a reasonable
         reader could go either way, which is worth knowing before acting on it.
         """
-        c = self.claims[int(claim_id)]
+        c = self._claim(claim_id)
         total = int(c.n_supported) + int(c.n_refuted) + int(c.n_unstable)
         return {
             "checks": total,

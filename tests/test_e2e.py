@@ -225,6 +225,27 @@ class TestCrosscheck:
         assert c.verdict(0) == "unstable"
         assert c.stability(0)["checks"] == 0
 
+
+    def test_a_read_with_a_nonexistent_id_is_a_user_error(self):
+        """Not a raw IndexError. GenVM reports an uncaught Python exception as
+        a contract error, which tells a caller nothing about what went wrong."""
+        c = self.deploy()
+        for method in ("verdict", "latest", "stability"):
+            with pytest.raises(S.UserError, match="no such claim"):
+                getattr(c, method)(99)
+
+    def test_a_read_with_a_negative_id_does_not_return_the_last_record(self):
+        """The dangerous half. Python list indexing accepts -1 and returns the
+        newest claim, so a caller asking for claim -1 would silently receive a
+        different claim's verdict and never know."""
+        c = self.deploy()
+        self.mocks(SUPPORT)
+        S.call(c, "check", 0)
+        assert c.verdict(0) == "supported"
+        for method in ("verdict", "latest", "stability"):
+            with pytest.raises(S.UserError, match="no such claim"):
+                getattr(c, method)(-1)
+
     # -- validation --------------------------------------------------------
 
     @pytest.mark.parametrize(

@@ -33,6 +33,25 @@ That is handled three ways, none of which is "compare the prose":
 Covered by `test_a_leader_supplied_reason_is_sanitised_before_storage` and
 `test_the_view_says_the_reasons_are_leader_supplied`.
 
+
+## A read with a negative id returned the newest record
+
+Every view indexed `self.claims[int(claim_id)]` directly. Two failures came out
+of one missing line.
+
+An id past the end raised a raw `IndexError`, which GenVM reports as a
+**contract error** rather than a user error — a caller learns nothing about
+what went wrong.
+
+The worse half: Python list indexing accepts `-1`. A caller asking for claim
+`-1` silently received the **newest** claim's verdict, correctly formatted,
+with nothing failing anywhere. A consuming contract could act on it and never
+know it had read a different claim.
+
+**Fix:** one bounds-checked lookup helper, used by every read.
+**Tests:** `test_a_read_with_a_nonexistent_id_is_a_user_error`,
+`test_a_read_with_a_negative_id_does_not_return_the_last_record`.
+
 ---
 
 ## Why the validator has two layers

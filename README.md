@@ -5,7 +5,7 @@
 A reusable primitive that answers a yes/no question about evidence by asking it **twice in opposite framings** inside a single non-deterministic block, and refusing to answer when the two framings disagree with each other.
 
 - **Contract:** [`contracts/crosscheck.py`](contracts/crosscheck.py)
-- **Tests:** `pytest tests/ -q` → **49 passed**, nothing to install but pytest
+- **Tests:** `pytest tests/ -q` → **51 passed**, nothing to install but pytest
 - **Deployed:** `{address}` on studionet ([explorer](https://explorer-studio.genlayer.com/address/{address}))
 - **Specification:** [CONTRACTS.md](CONTRACTS.md)
 - **Decisions and limits:** [DECISIONS.md](DECISIONS.md)
@@ -129,7 +129,7 @@ pytest tests/ -q
 ```
 
 ```
-49 passed, 1 skipped
+51 passed, 1 skipped
 ```
 
 Three suites, covering different things.
@@ -160,8 +160,8 @@ gltest --network studionet tests/test_integration.py
 ### The tests have teeth
 
 Passing tests prove nothing on their own, so every safety property was broken on
-purpose to confirm a test notices. Five mutations were introduced against this
-contract and all five were caught:
+purpose to confirm a test notices. Seven mutations were introduced against
+this contract and all seven were caught:
 
 | Mutation | Caught by |
 |---|---|
@@ -170,6 +170,8 @@ contract and all five were caught:
 | the verdict trusted instead of recomputed before storing | `test_the_verdict_is_recomputed_from_the_stored_framings` |
 | the reason sanitiser disabled | `test_markup_is_stripped` |
 | control characters left in stored reasons | `test_control_characters_become_spaces` |
+| the view bounds check removed | `test_a_read_with_a_nonexistent_id_is_a_user_error` |
+| negative ids allowed through to Python list indexing | `test_a_read_with_a_negative_id_does_not_return_the_last_record` |
 
 ---
 
