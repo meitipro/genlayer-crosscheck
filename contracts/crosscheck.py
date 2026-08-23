@@ -253,7 +253,6 @@ class Claim:
 class Contract(gl.Contract):
     claims: DynArray[Claim]
     checks: DynArray[Check]
-    checks: DynArray[Check]
 
     def __init__(self):
         pass
