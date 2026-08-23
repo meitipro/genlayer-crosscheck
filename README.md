@@ -20,22 +20,22 @@ Two claims, judged against the same evidence page. One resolved; one refused.
 **Claim 0** — "This domain is for use in illustrative examples in documents."
 
 ```
-supports: yes    contradicts: no    -> supported
+supports: yes contradicts: no -> supported
 ```
 
-Mirrored answers. One of only two internally consistent combinations.
+Mirrored answers, one of only two internally consistent combinations.
 
 **Claim 1** — "This page is broadly considered to be quite useful for most purposes."
 
 ```
-supports: no    contradicts: unclear    -> unstable
+supports: no contradicts: unclear -> unstable
 ```
 
 The model could not answer coherently in both directions, so the contract
 refused. Its own stored reasons say why: the page describes a specific limited
 use and says nothing about usefulness. The claim is worded so a reasonable
 reader could go either way, and a single-framing contract would have returned a
-confident answer and never known.
+confident answer and never known it was guessing.
 
 Call `latest(0)` and `latest(1)` on the deployed contract to see both, with the
 framings that produced them.
