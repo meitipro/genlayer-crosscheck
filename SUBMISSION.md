@@ -33,7 +33,7 @@ Crosscheck: a framing-sensitivity detector for LLM-backed contracts
 ## Notes (989 characters, the box caps at 1000)
 
 ```
-Crosscheck is a reusable framing-sensitivity detector for LLM-backed contracts. Ask a model whether evidence SUPPORTS a claim and it agrees; ask whether it CONTRADICTS the same claim and it often agrees again. Consensus misses this: every validator runs the same single framing, so the network agrees on an answer that would have flipped had the question been worded the other way. The contract uses gl.vm.run_nondet_unsafe and runs BOTH framings in one block. Only yes/no and no/yes are internally consistent; the other seven combinations become UNSTABLE. The validator has two layers. Layer one is a free internal honesty check: combine() is pure, so a validator confirms the leader's own two answers produce the verdict it reported, before running any prompt. Layer two compares ONLY the verdict, never the raw framings, since two honest nodes may differ on one framing and still agree. Reusable as a confidence gate. Deployed at {address} on studionet.
+Crosscheck is a reusable framing-sensitivity detector for LLM-backed contracts. Ask a model whether evidence SUPPORTS a claim and it agrees; ask whether it CONTRADICTS the same claim and it often agrees again. Consensus misses this: every validator runs the same single framing, so the network agrees on an answer that would have flipped had the question been worded the other way. The contract uses gl.vm.run_nondet_unsafe and runs BOTH framings in one block. Only yes/no and no/yes are internally consistent; the other seven combinations become UNSTABLE. The validator has two layers. Layer one is a free internal honesty check: combine() is pure, so a validator confirms the leader's own two answers produce the verdict it reported, before running any prompt. Layer two compares ONLY the verdict, never the raw framings, since two honest nodes may differ on one framing and still agree. Reusable as a confidence gate. Deployed at 0x0B6C04CB34A04c4E3b77f70ad60CeB1d7D8d6F74 on studionet.
 ```
 
 ## Links
@@ -41,7 +41,7 @@ Crosscheck is a reusable framing-sensitivity detector for LLM-backed contracts. 
 ```
 GitHub:   https://github.com/meitipro/genlayer-crosscheck
 Contract: https://github.com/meitipro/genlayer-crosscheck/blob/main/contracts/crosscheck.py
-Explorer: https://explorer-studio.genlayer.com/address/{address}
+Explorer: https://explorer-studio.genlayer.com/address/0x0B6C04CB34A04c4E3b77f70ad60CeB1d7D8d6F74
 ```
 
 ---

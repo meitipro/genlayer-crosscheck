@@ -6,10 +6,39 @@ A reusable primitive that answers a yes/no question about evidence by asking it 
 
 - **Contract:** [`contracts/crosscheck.py`](contracts/crosscheck.py)
 - **Tests:** `pytest tests/ -q` → **63 passed**, nothing to install but pytest
-- **Deployed:** `{address}` on studionet ([explorer](https://explorer-studio.genlayer.com/address/{address}))
+- **Deployed:** [`0x0B6C04CB34A04c4E3b77f70ad60CeB1d7D8d6F74`](https://explorer-studio.genlayer.com/address/0x0B6C04CB34A04c4E3b77f70ad60CeB1d7D8d6F74) on studionet
 - **Specification:** [CONTRACTS.md](CONTRACTS.md)
 - **Decisions and limits:** [DECISIONS.md](DECISIONS.md)
 - **License:** MIT. Copy the agreement rule; that is what it is for.
+
+---
+
+## It is live, and both paths are on chain
+
+Two claims, judged against the same evidence page. One resolved; one refused.
+
+**Claim 0** — "This domain is for use in illustrative examples in documents."
+
+```
+supports: yes    contradicts: no    -> supported
+```
+
+Mirrored answers. One of only two internally consistent combinations.
+
+**Claim 1** — "This page is broadly considered to be quite useful for most purposes."
+
+```
+supports: no    contradicts: unclear    -> unstable
+```
+
+The model could not answer coherently in both directions, so the contract
+refused. Its own stored reasons say why: the page describes a specific limited
+use and says nothing about usefulness. The claim is worded so a reasonable
+reader could go either way, and a single-framing contract would have returned a
+confident answer and never known.
+
+Call `latest(0)` and `latest(1)` on the deployed contract to see both, with the
+framings that produced them.
 
 ---
 
