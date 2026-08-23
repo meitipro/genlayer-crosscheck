@@ -19,37 +19,35 @@ gold() { printf '\033[33m%s\033[0m\n' "$*"; }
 dim()  { printf '\033[2m%s\033[0m\n' "$*"; }
 
 gold "Deploying Crosscheck to $NETWORK"
-genlayer network "$NETWORK"
+genlayer network set "$NETWORK"
 
 dim "linting"
-genvm-lint contracts/crosscheck.py
+PYTHONIOENCODING=utf-8 genvm-lint lint contracts/crosscheck.py
 
-ADDR=$(genlayer deploy --contract contracts/crosscheck.py --args '[]' \
+ADDR=$(genlayer deploy --contract contracts/crosscheck.py \
        | grep -oE '0x[0-9a-fA-F]{40}' | head -1)
 gold "deployed at $ADDR"
 
 dim "register() a claim, frozen against one evidence page"
-genlayer write "$ADDR" register --args '[
-  "This domain is reserved for use in illustrative examples in documents.",
-  "https://example.com"
-]' >/dev/null
+genlayer write "$ADDR" register --args \
+  "This domain is reserved for use in illustrative examples in documents." \
+  "https://example.com" >/dev/null
 
 dim "check()    two mirrored prompts in one block"
-genlayer write "$ADDR" check --args '[0]'
+genlayer write "$ADDR" check --args 0
 
 dim "latest()   the verdict and both framings that produced it"
-genlayer call "$ADDR" latest --args '[0]'
+genlayer call "$ADDR" latest --args 0
 
 # A second claim, deliberately vague, so the refusal path is on chain too. A
 # contract page showing only successes is a weaker demonstration than one
 # showing the primitive decline to answer.
 dim "register() a vague claim, to leave an unstable verdict on chain"
-genlayer write "$ADDR" register --args '[
-  "This page is broadly considered to be quite useful for most purposes.",
-  "https://example.com"
-]' >/dev/null
-genlayer write "$ADDR" check --args '[1]' || true
-genlayer call "$ADDR" stability --args '[1]'
+genlayer write "$ADDR" register --args \
+  "This page is broadly considered to be quite useful for most purposes." \
+  "https://example.com" >/dev/null
+genlayer write "$ADDR" check --args 1 || true
+genlayer call "$ADDR" stability --args 1
 
 cat <<EOF
 
